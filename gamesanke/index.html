@@ -1,22 +1,25 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>loop game</title>
+    <title>Snake SENAC</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-    <h1>Template game</h1>
-
+    <h1>Snake SENAC</h1>
+    <p>Use as setas ou WASD. Pausa: Espaço. Reiniciar: R.</p>
+    </header>
     <div class="hud">
-        <span class="score">Score: 0</span>
-        <span class="record">Record: 3</span>
-        <span class="state">Estado: pronto</span>
+        <span>Pontos: <strong id="score">0</strong></span>
+        <span>Recorde: <strong id="best">0</strong></span>
+        <span>Estado: <strong id="state">PRONTO</strong></span>
     </div>
-
-    <canvas id="game" width="480" height="300"></canvas>
-    <p class="hint">coma as maças. evite as paredes e o propio corpo</p>
-<script src="script.js"></script>
+    <canvas id="game" width="380" height="380" aria-label="Área do jogo da cobra"></canvas>
+    <p class="hint">Coma as maçãs. Evite as paredes e o próprio corpo.</p>
+    <script src="script.js"></script>
 </body>
+
 </html>

@@ -1,130 +1,159 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-const score1 = document.getElementById("score");
-const state1 = document.getElementById("state");
+const scoreEl = document.getElementById("score");
+const bestEl = document.getElementById("best");
+const stateEl = document.getElementById("state");
 
-const cell = 24;
-const coils = canvas.width / cell; //480 / 24 = 20
-const rows = canvas.height / cell; 
-const ticks_ms = 110;// a cobra se move 1 celula a cada 110ms.
+const CELL = 24;
+const COLS = canvas.width / CELL;
+const ROWS = canvas.height / CELL;
+const TICK_MS = 110;
 
-const STATES = {
-    READY: "PRONTO",
-    PLAYING: "JOGANDO",
-    GAME_OVER: "GAME_OVER",
-    PAUSED: "PAUSADO"
-};
+const STATES = { READY: "PRONTO", PLAYING: "JOGANDO", PAUSED: "PAUSA", OVER: "GAME OVER" };
 
-const player = {
-x: 40,y: 160,w: 32,h: 32,vx: 120,};
-
-let states = STATES.READY;
+let state = STATES.READY;
 let snake = [];
 let dir = { x: 1, y: 0 };
+let nextDir = { x: 1, y: 0 };
 let food = { x: 10, y: 10 };
-let next = { x: 1, y: 0 };
 let score = 0;
+let best = Number(localStorage.getItem("snake-best") || 0);
 let acc = 0;
-let last = 0;//marca a posiçao do quadro anterior
-let best = localStorage.getItem("snake-best") || 0;
+let last = 0;
+
+bestEl.textContent = best;
 
 function reset() {
-    const midx = Math.floor(coils/2);
-    const midy = Math.floor(rows/2);
+    const midX = Math.floor(COLS / 2);
+    const midY = Math.floor(ROWS / 2);
+    snake = [
+        { x: midX, y: midY },
+        { x: midX - 1, y: midY },
+        { x: midX - 2, y: midY },
+    ];
+    dir = { x: 1, y: 0 };
+    nextDir = { x: 1, y: 0 };
+    score = 0;
+    scoreEl.textContent = score;
+    spawnFood();
+    state = STATES.READY;
+    stateEl.textContent = state;
 }
 
-snake = [
-    { x: midx, y: midy  },
-    { x: midx - 1, y: midy  },
-    { x: midx - 2 * 2, y: midy  }
-];
-
-dir = { x: 1, y: 0 };
-food = { x: 10, y: 10 };
-nextdir = { x: 1, y: 0 };
-score = 0;
-acc = 0;
-last = 0;
-
-function spawnApple() {
-    food = {
-        x: Math.floor(Math.random() * cols) ,
-        y: Math.floor(Math.random() * rows) * cell
-    };
+function spawnFood() {
+    do {
+        food = {
+            x: Math.floor(Math.random() * COLS),
+            y: Math.floor(Math.random() * ROWS),
+        };
+    } while (snake.some((s) => s.x === food.x && s.y === food.y));
 }
 
-let lasttime = 0; //marca a posição do último frame
+function setDirection(x, y) {
+    if (dir.x + x === 0 && dir.y + y === 0) return; // impede 180°
+    nextDir = { x, y };
+}
+
+window.addEventListener("keydown", (e) => {
+    const key = e.key.toLowerCase();
+    if (["arrowup",
+        "arrowdown",
+        "arrowleft",
+        "arrowright",
+        " "].includes(key) || key === " ") {
+        e.preventDefault();
+    }
+    if (key === "arrowup" || key === "w") setDirection(0, -1);
+    if (key === "arrowdown" || key === "s") setDirection(0, 1);
+    if (key === "arrowleft" || key === "a") setDirection(-1, 0);
+    if (key === "arrowright" || key === "d") setDirection(1, 0);
+
+    if (key === " ") {
+        if (state === STATES.PLAYING) {
+            state = STATES.PAUSED;
+        } else if (state === STATES.PAUSED || state === STATES.READY) {
+            state = STATES.PLAYING;
+        }
+        stateEl.textContent = state;
+    }
+    if (key === "r") reset();
+    if (state === STATES.READY &&
+        ["arrowup",
+            "arrowdown",
+            "arrowleft",
+            "arrowright",
+            "w", "a", "s", "d"].includes(key)) {
+        state = STATES.PLAYING;
+        stateEl.textContent = state;
+    }
+});
 
 function tick() {
-    dir = nextdir;
+    dir = nextDir;
     const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
 
-    const hitwall = head.x < 0 || head.y < 0 || head.x >= cols || head.y >= rows;
-
-    const hitbody = snake.some((s)=> s.x === head && s.y === rows);
-
-    if (hitwall || hitbody) {
-        states = STATES.GAME_OVER;
+    const hitWall = head.x < 0 || head.y < 0 || head.x >= COLS || head.y >= ROWS;
+    const hitBody = snake.some((s) => s.x === head.x && s.y === head.y);
+    if (hitWall || hitBody) {
+        state = STATES.OVER;
+        stateEl.textContent = state;
         if (score > best) {
             best = score;
-            localStorage.setItem("snake-best", best);
+            localStorage.setItem("snake-best", String(best));
+            bestEl.textContent = best;
         }
+        return;
     }
-
-
-    snake.unshift(head);//criar uma cabeça nova
+    snake.unshift(head);
     if (head.x === food.x && head.y === food.y) {
         score += 10;
-        spawnApple();//comer maça, NAO remove um pedaço da cobra
+        scoreEl.textContent = score;
+        spawnFood();
     } else {
-        snake.pop();//nao comeu, fila continua
+        snake.pop();
     }
 }
 
-function update(dt) {
-player.x += player.vx * dt;
-//se ele bateu na parede esquerda ou direita? ele vai inerter o sinal do vx
-if (player.x < 0 || player.x + player.w > canvas.width) {
-player.vx *= -1;
-}
-
-function drawcell(x, y, color){
+function drawCell(x, y, color) {
     ctx.fillStyle = color;
-    ctx.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
+    ctx.fillRect(x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2);
 }
 
-}
 function draw() {
-ctx.fillStyle = "blue";
-ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-drawcell(food.x, food.y, "red");
-snake.forEach((s, i) => drawcell(s.x, s.y, i === 0 ? "green" : "white"));
-if (states.PLAYING) {
-    ctx.fillStyle = "white";
+    ctx.fillStyle = "#900a87ff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.textAlign = "center";
-    ctx.font = "bold 24px Arial";
-    ctx.fillText(state, canvas.width /2, canvas.height / 2);
-}
+
+    drawCell(food.x, food.y, "#f87171");
+    snake.forEach((s, i) => drawCell(s.x, s.y, i === 0 ? "#4a8ddeff" : "#19065cff"));
+
+    if (state !== STATES.PLAYING) {
+        ctx.fillStyle = "rgba(15,23,42,0.65)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#f8fafc";
+        ctx.textAlign = "center";
+        ctx.font = "bold 28px Segoe UI";
+        ctx.fillText(state, canvas.width / 2, canvas.height / 2);
+
+        ctx.font = "16px Segoe UI";
+        ctx.fillText(state === STATES.OVER ?
+            "Pressione R para reiniciar" :
+            "Pressione ESPAÇO para jogar", canvas.width / 2, canvas.height / 2 + 32);
+    }
 }
 
 function loop(ts) {
-
-const dt = ts - last//ms=segundo
-last = ts;
-
-if (states === STATES.PLAYING) {
-acc += dt;
-
-while (acc >= ticks_ms) {
-    tick();
-    acc -= ticks_ms;
-}
-
-}
-
+    const dt = ts - last;
+    last = ts;
+    if (state === STATES.PLAYING) {
+        acc += dt;
+        while (acc >= TICK_MS) {
+            tick();
+            acc -= TICK_MS;
+        }
+    }
     draw();
-requestAnimationFrame(loop);
+    requestAnimationFrame(loop);
 }
-requestAnimationFrame(loop);// executar o primeiro disparo
+
+reset();
+requestAnimationFrame(loop);
